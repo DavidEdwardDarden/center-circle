@@ -2647,6 +2647,7 @@ body.light-mode .circle-wrapper {
 }
 /* outer dark body bg bleeds through - cover with body bg color match */
 body.light-mode { background-color:#f2ede4; }
+body.light-mode, html:has(body.light-mode) { overflow-x:hidden; }
 body.light-mode canvas#fireCanvas { opacity:0.08; }
 body.light-mode .circle-ring-inner { border-color:rgba(138,104,32,0.4) !important; }
 body.light-mode .circle-ring-outer { border-color:rgba(138,104,32,0.15) !important; }
@@ -2654,8 +2655,10 @@ body.light-mode .ci-text { color:#2a2420 !important; text-shadow:none !important
 body.light-mode .ci-symbol-label { opacity:1 !important; }
 body.light-mode .circle-empty-label { color:rgba(138,104,32,0.4); }
 body.light-mode #grandCircle {
+  width:min(calc(var(--circle-r) * 1.55), 98vw) !important;
+  height:min(calc(var(--circle-r) * 1.55), 98vw) !important;
   background:
-    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(210,200,185,0.6) 30%, rgba(195,185,168,0.4) 70%, transparent 100%);
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(225,218,205,0.85) 30%, rgba(210,200,185,0.6) 70%, transparent 100%);
   box-shadow:
     0 0 0 1px rgba(138,104,32,0.4),
     0 0 0 12px rgba(230,222,210,0.97),
@@ -5192,35 +5195,29 @@ function drawCracks(){
     }
   }
 
-  // erase inside grand circle — derive position same way as positionGrandCircle
+  // Erase hex grid inside the circle — single operation, canvas-BCR-anchored
+  // so coordinate mapping is correct regardless of scrollbar width or canvas scaling
   const gcEl = document.getElementById('grandCircle');
   const wrapEl = document.getElementById('circleWrap');
   if(gcEl && wrapEl){
-    const gcr = gcEl.offsetWidth / 2;
-    let el2 = wrapEl, wTop = 0, wLeft = 0;
-    while(el2){ wTop += el2.offsetTop; wLeft += el2.offsetLeft; el2 = el2.offsetParent; }
-    const gcCenterX = wLeft + wrapEl.offsetWidth / 2;
-    const gcCenterY = wTop  + wrapEl.offsetHeight / 2;
+    const cvBCR = cv.getBoundingClientRect();
+    // scale: canvas pixel coords → CSS viewport coords
+    const scaleX = cv.width  / (cvBCR.width  || cv.width);
+    const scaleY = cv.height / (cvBCR.height || cv.height);
+    // circle center in canvas pixel coords
+    const wBCR = wrapEl.getBoundingClientRect();
+    const cx = (wBCR.left - cvBCR.left + wBCR.width  / 2) * scaleX;
+    const cy = (wBCR.top  - cvBCR.top  + wBCR.height / 2) * scaleY;
+    // erase radius: use grandCircle's actual rendered width + small bleed
+    const gcBCR = gcEl.getBoundingClientRect();
+    const er = (gcBCR.width / 2) * scaleX + 8;
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(gcCenterX, gcCenterY, gcr, 0, Math.PI*2);
+    ctx.arc(cx, cy, er, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(0,0,0,1)';
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
   }
-
-  // erase inside center circle
-  const ring = document.getElementById('circleWrap');
-  const rect = ring.getBoundingClientRect();
-  const cx = rect.left + rect.width/2;
-  const cy = rect.top  + rect.height/2;
-  const cr = rect.width/2 + 4;
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.beginPath();
-  ctx.arc(cx, cy, cr, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(0,0,0,1)';
-  ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
 }
 /* ════════════════════════════════
    INIT
